@@ -7,17 +7,21 @@ def main():
     parser = argparse.ArgumentParser()
 
     ## Required parameters
-    parser.add_argument("--in_file", default=None, type=str, required=True,
-                        help="Input file")
+    parser.add_argument(
+        "--in_file", default=None, type=str, required=True, help="Input file"
+    )
 
-    parser.add_argument("--out_file", default=None, type=str, required=True,
-                        help="Output file")
+    parser.add_argument(
+        "--out_file", default=None, type=str, required=True, help="Output file"
+    )
 
-    parser.add_argument("--out_vocab_file", default=None, type=str, required=True,
-                        help="Output file")
+    parser.add_argument(
+        "--out_vocab_file", default=None, type=str, required=True, help="Output file"
+    )
 
-    parser.add_argument("--num_labels", default=None, type=int, required=True,
-                        help="Number of labels")
+    parser.add_argument(
+        "--num_labels", default=None, type=int, required=True, help="Number of labels"
+    )
 
     args = parser.parse_args()
 

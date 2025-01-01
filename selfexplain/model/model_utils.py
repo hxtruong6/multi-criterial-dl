@@ -30,10 +30,11 @@ class TimeDistributed(torch.nn.Module):
 
     @overrides
     def forward(self, *inputs, pass_through: List[str] = None, **kwargs):
-
         pass_through = pass_through or []
 
-        reshaped_inputs = [self._reshape_tensor(input_tensor) for input_tensor in inputs]
+        reshaped_inputs = [
+            self._reshape_tensor(input_tensor) for input_tensor in inputs
+        ]
 
         # Need some input to then get the batch_size and time_steps.
         some_input = None
