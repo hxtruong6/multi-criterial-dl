@@ -25,7 +25,6 @@ resource.setrlimit(resource.RLIMIT_NOFILE, (4096, rlimit[1]))
 SEED = 18
 np.random.seed(SEED)
 random.seed(SEED)
-pl.utilities.seed.seed_everything(SEED)
 pytorch_lightning.seed_everything(SEED)
 
 
@@ -77,12 +76,21 @@ checkpoint_callback = ModelCheckpoint(
     mode="max",
 )
 
-trainer = pl.Trainer.from_argparse_args(
-    args,
-    callbacks=[checkpoint_callback],
+# trainer = pl.Trainer.from_argparse_args(
+#     args,
+#     callbacks=[checkpoint_callback, lr_monitor],
+#     val_check_interval=0.5,
+#     gradient_clip_val=args.clip_grad,
+#     track_grad_norm=2,
+# )
+
+trainer = pytorch_lightning.Trainer(
+    callbacks=[checkpoint_callback, lr_monitor],
     val_check_interval=0.5,
     gradient_clip_val=args.clip_grad,
     track_grad_norm=2,
 )
+
+
 trainer.fit(model, dm)
 # trainer.test()
