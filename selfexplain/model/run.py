@@ -6,8 +6,8 @@ import pytorch_lightning as pl
 import logging
 from argparse import ArgumentParser
 import resource
-from data import ClassificationData
 from SE_XLNet import SEXLNet
+from model.data import ClassificationData
 
 
 def get_train_steps(dm):
@@ -41,19 +41,24 @@ parser.add_argument("--model_name", default="xlnet-base-cased", help="Model to u
 parser.add_argument("--gamma", default=0.01, type=float, help="Gamma parameter")
 parser.add_argument("--lamda", default=0.01, type=float, help="Lamda Parameter")
 parser.add_argument("--topk", default=100, type=int, help="Topk GIL concepts")
+# run.py: error: unrecognized arguments: --lr 2e-5 --max_epochs 5 --gpus 1 --accelerator ddp
+parser.add_argument("--lr", default=2e-5, type=float, help="Learning rate")
+parser.add_argument("--max_epochs", default=5, type=int, help="Max epochs")
+parser.add_argument("--gpus", default=1, type=int, help="Number of GPUs")
+parser.add_argument("--accelerator", default="ddp", type=str, help="Accelerator")
 
-parser = pl.Trainer.add_argparse_args(parser)
-parser = SEXLNet.add_model_specific_args(parser)
+# # parser = pl.Trainer.add_argparse_args(parser)
+# parser = SEXLNet.add_model_specific_args(parser)
 
 args = parser.parse_args()
-# print(args)
+print(args)
 args.num_gpus = len(str(args.gpus).split(","))
 
 
 logging.basicConfig(level=logging.INFO)
 
 # Step 1: Init Data
-logging.info("Loading the data module")
+logging.info("--------------------------------Loading the data module--------------------------------")
 dm = ClassificationData(
     basedir=args.dataset_basedir,
     tokenizer_name=args.model_name,
@@ -61,13 +66,13 @@ dm = ClassificationData(
 )
 
 # Step 2: Init Model
-logging.info("Initializing the model")
+logging.info("--------------------------------Initializing the model--------------------------------")
 model = SEXLNet(hparams=args)
 model.hparams.warmup_steps = int(get_train_steps(dm) * model.hparams.warmup_prop)
 lr_monitor = LearningRateMonitor(logging_interval="step")
 
 # Step 3: Start
-logging.info("Starting the training")
+logging.info("--------------------------------Starting the training--------------------------------")
 checkpoint_callback = ModelCheckpoint(
     filename="{epoch}-{step}-{val_acc_epoch:.4f}",
     save_top_k=3,
@@ -91,6 +96,8 @@ trainer = pytorch_lightning.Trainer(
     track_grad_norm=2,
 )
 
-
+logging.info("--------------------------------Fitting the model--------------------------------")
 trainer.fit(model, dm)
+logging.info("--------------------------------Training completed--------------------------------")
+
 # trainer.test()

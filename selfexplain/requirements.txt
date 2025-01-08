@@ -4,6 +4,6 @@ numpy==2.2.1
 overrides==7.7.0
 pandas==2.2.3
 pytorch_lightning==2.5.0.post0
-torch==2.5.1
+torch==2.5.1+cu121
 tqdm==4.67.1
 transformers==4.47.1

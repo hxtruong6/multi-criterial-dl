@@ -7,3 +7,4 @@ demo/*
 **/__pycache__
 
 data/**/*.json
+data/**/*.pt
