@@ -50,6 +50,8 @@ parser.add_argument("--accelerator", default="ddp", type=str, help="Accelerator"
 # # parser = pl.Trainer.add_argparse_args(parser)
 # parser = SEXLNet.add_model_specific_args(parser)
 
+# TODO: we need to upgrade the pytorch lightning version to 2.xxx
+
 args = parser.parse_args()
 print(args)
 args.num_gpus = len(str(args.gpus).split(","))
@@ -67,7 +69,7 @@ dm = ClassificationData(
 
 # Step 2: Init Model
 logging.info("--------------------------------Initializing the model--------------------------------")
-model = SEXLNet(hparams=args)
+model = SEXLNet(hparams=args) # fix this model input
 model.hparams.warmup_steps = int(get_train_steps(dm) * model.hparams.warmup_prop)
 lr_monitor = LearningRateMonitor(logging_interval="step")
 
