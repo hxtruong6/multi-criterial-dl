@@ -8,3 +8,4 @@ demo/*
 
 data/**/*.json
 data/**/*.pt
+lightning_logs/*

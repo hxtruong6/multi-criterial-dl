@@ -1,6 +1,7 @@
 """Wrapper for a conditional generation dataset present in 2 tab-separated columns:
 source[TAB]target
 """
+
 import logging
 import pytorch_lightning as pl
 import torch
@@ -10,7 +11,7 @@ import pandas as pd
 from transformers import AutoTokenizer, RobertaTokenizer
 from tqdm import tqdm
 
-from data_utils import pad_nt_matrix_roberta, pad_nt_matrix_xlnet
+from model.data_utils import pad_nt_matrix_roberta, pad_nt_matrix_xlnet
 
 
 class ClassificationData(pl.LightningDataModule):

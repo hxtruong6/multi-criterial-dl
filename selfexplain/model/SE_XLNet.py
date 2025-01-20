@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+import logging
 
 import torch
 import torch.nn as nn
@@ -7,7 +8,7 @@ from torch.optim import AdamW
 from transformers import AutoModel, AutoConfig, RobertaConfig, RobertaModel
 from transformers.modeling_utils import SequenceSummary
 
-from model_utils import TimeDistributed
+from model.model_utils import TimeDistributed
 
 
 class SEXLNet(LightningModule):
@@ -44,6 +45,7 @@ class SEXLNet(LightningModule):
         self.sequence_summary = SequenceSummary(config)
 
         self.topk = self.hparams.topk
+        logging.info(f"Topk: {self.topk}")
         # self.topk_gil_mlp = TimeDistributed(nn.Linear(config.d_model,
         #                                               self.hparams.num_classes))
 
@@ -60,9 +62,14 @@ class SEXLNet(LightningModule):
 
         self.dropout = nn.Dropout(config.dropout)
         self.loss = nn.CrossEntropyLoss()
+        
+        
+        # Upgrade for track_grad_norm
+        # self.on_before_optimizer_step 
 
     @staticmethod
     def add_model_specific_args(parent_parser):
+        # TODO: remove this
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument(
             "--min_lr", default=0, type=float, help="Minimum learning rate."
@@ -97,8 +104,9 @@ class SEXLNet(LightningModule):
         return AdamW(self.parameters(), lr=self.hparams.lr, betas=(0.9, 0.99), eps=1e-8)
 
     def forward(self, batch):
+        logging.info(f"Batch: {batch}")
         self.concept_store = self.concept_store.to(self.model.device)
-        # print(self.concept_store.size(), self.hparams.concept_store)
+        logging.info(f"Concept store: {self.concept_store.size()} {self.hparams.concept_store}")
         tokens, tokens_mask, padded_ndx_tensor, labels = batch
 
         # step 1: encode the sentence
@@ -111,6 +119,7 @@ class SEXLNet(LightningModule):
                 input_ids=tokens, attention_mask=tokens_mask
             )
 
+        logging.info(f"Sentence cls: {sentence_cls.size()} {sentence_cls}")
         logits = self.classifier(sentence_cls)
 
         lil_logits = self.lil(
@@ -131,6 +140,8 @@ class SEXLNet(LightningModule):
     def gil(self, pooled_input):
         batch_size = pooled_input.size(0)
         inner_products = torch.mm(pooled_input, self.concept_store.T)
+        logging.info(f"Inner products: {inner_products.size()}")
+        logging.info(f"Topk indices GIL: {self.topk}")
         _, topk_indices = torch.topk(inner_products, k=self.topk)
         topk_concepts = torch.index_select(self.concept_store, 0, topk_indices.view(-1))
         topk_concepts = topk_concepts.view(batch_size, self.topk, -1).contiguous()
