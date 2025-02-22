@@ -12,18 +12,59 @@ import resource
 from argparse import ArgumentParser
 import logging
 
-from SE_XLNet import SEXLNet
-from data import ClassificationData
+from model.SE_XLNet import SEXLNet
+from model.data import ClassificationData
 
 logging.basicConfig(level=logging.INFO)
 
 
+def get_device_config():
+    """Determine the best available device configuration"""
+    if torch.cuda.is_available():
+        logging.info("GPU available - using CUDA")
+        return {
+            "accelerator": "cuda",
+            "devices": "auto",
+            "strategy": "auto",
+            "precision": 32,
+        }
+    elif torch.backends.mps.is_available():
+        logging.info("Apple Silicon GPU available - using MPS")
+        # return {
+        #     "accelerator": "mps",
+        #     "devices": "auto",
+        #     "strategy": "auto",
+        #     "precision": 32,
+        # }
+        return {
+            "accelerator": "cpu",
+            "devices": "auto",
+            "strategy": "auto",
+            "precision": 32,
+        }
+    else:
+        logging.info("No GPU available - using CPU")
+        return {
+            "accelerator": "cpu",
+            "devices": None,
+            "strategy": None,
+            "precision": 32,
+        }
+
+
 def load_model(ckpt, batch_size):
     """Load the trained model from checkpoint"""
-    model = SEXLNet.load_from_checkpoint(ckpt)
+    device_config = get_device_config()
+
+    # Load model to appropriate device
+    if device_config["accelerator"] == "cpu":
+        model = SEXLNet.load_from_checkpoint(ckpt, map_location="cpu")
+    else:
+        model = SEXLNet.load_from_checkpoint(ckpt)
+
     model.eval()
 
-    trainer = Trainer(accelerator="auto", devices="auto", strategy="auto")
+    trainer = Trainer(**device_config)
 
     dm = ClassificationData(
         basedir=model.hparams.dataset_basedir,
