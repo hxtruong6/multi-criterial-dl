@@ -35,10 +35,14 @@ def get_parse_args():
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--clip_grad", type=float, default=1.0)
     parser.add_argument(
-        "--dataset_basedir", help="Base directory where the dataset is located.", type=str
+        "--dataset_basedir",
+        help="Base directory where the dataset is located.",
+        type=str,
     )
     parser.add_argument("--concept_store", help="Concept store file", type=str)
-    parser.add_argument("--model_name", default="xlnet-base-cased", help="Model to use.")
+    parser.add_argument(
+        "--model_name", default="xlnet-base-cased", help="Model to use."
+    )
     parser.add_argument("--gamma", default=0.01, type=float, help="Gamma parameter")
     parser.add_argument("--lamda", default=0.01, type=float, help="Lamda Parameter")
     parser.add_argument("--topk", default=5, type=int, help="Topk GIL concepts")
@@ -48,13 +52,30 @@ def get_parse_args():
     parser.add_argument("--accelerator", default="ddp", type=str, help="Accelerator")
 
     # For SE_XLNet
-    parser.add_argument("--min_lr", default=0, type=float, help="Minimum learning rate.")
-    parser.add_argument("--h_dim", type=int, help="Size of the hidden dimension.", default=768)
-    parser.add_argument("--n_heads", type=int, help="Number of attention heads.", default=1)
-    parser.add_argument("--kqv_dim", type=int, help="Dimensionality of the each attention head.", default=256)
-    parser.add_argument("--num_classes", type=float, help="Number of classes.", default=2)
-    parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay rate.")
-    parser.add_argument("--warmup_prop", default=0.01, type=float, help="Warmup proportion.")
+    parser.add_argument(
+        "--min_lr", default=0, type=float, help="Minimum learning rate."
+    )
+    parser.add_argument(
+        "--h_dim", type=int, help="Size of the hidden dimension.", default=768
+    )
+    parser.add_argument(
+        "--n_heads", type=int, help="Number of attention heads.", default=1
+    )
+    parser.add_argument(
+        "--kqv_dim",
+        type=int,
+        help="Dimensionality of the each attention head.",
+        default=256,
+    )
+    parser.add_argument(
+        "--num_classes", type=float, help="Number of classes.", default=2
+    )
+    parser.add_argument(
+        "--weight_decay", default=0.01, type=float, help="Weight decay rate."
+    )
+    parser.add_argument(
+        "--warmup_prop", default=0.01, type=float, help="Warmup proportion."
+    )
 
     return parser
 
