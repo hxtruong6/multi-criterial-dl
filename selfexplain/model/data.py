@@ -10,18 +10,27 @@ from torch.utils.data import Dataset
 import pandas as pd
 from transformers import AutoTokenizer, RobertaTokenizer
 from tqdm import tqdm
+import os
 
 from model.data_utils import pad_nt_matrix_roberta, pad_nt_matrix_xlnet
 
 
 class ClassificationData(pl.LightningDataModule):
+
     def __init__(
-        self, basedir: str, tokenizer_name: str, batch_size: int, num_workers: int = 16
+        self,
+        basedir: str,
+        tokenizer_name: str,
+        batch_size: int,
+        num_workers: int = None,
     ):
         super().__init__()
         self.basedir = basedir
         self.batch_size = batch_size
-        self.num_workers = num_workers
+        if num_workers is None:
+            self.num_workers = min(10, os.cpu_count() or 1)
+        else:
+            self.num_workers = num_workers
 
         print(tokenizer_name)
         if tokenizer_name == "xlnet-base-cased":
@@ -43,6 +52,7 @@ class ClassificationData(pl.LightningDataModule):
             shuffle=True,
             num_workers=self.num_workers,
             collate_fn=self.collator,
+            persistent_workers=True,
         )
 
     def val_dataloader(self):
@@ -55,6 +65,7 @@ class ClassificationData(pl.LightningDataModule):
             shuffle=False,
             num_workers=self.num_workers,
             collate_fn=self.collator,
+            persistent_workers=True,
         )
 
     def test_dataloader(self):
@@ -101,7 +112,7 @@ class ClassificationDataset(Dataset):
         return len(self.sentences)
 
     def __getitem__(self, i):
-        # We’ll pad at the batch level.
+        # We'll pad at the batch level.
         return (
             self.input_ids[i],
             self.token_type_ids[i],

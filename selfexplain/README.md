@@ -49,6 +49,8 @@ Note we have provided data for SST-2 and SUBJ.
 For training, please edit data path and control other parameters.
 
 ```shell
+# Download the model
+#python -c "from transformers import AutoModel; AutoModel.from_pretrained('xlnet-base-cased', force_download=True)"
 sh scripts/run_self_explain.sh
 ```
 

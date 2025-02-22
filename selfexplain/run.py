@@ -1,5 +1,3 @@
-
-
 import pytorch_lightning
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 import random
@@ -15,27 +13,19 @@ from model.data import ClassificationData
 
 logging.basicConfig(level=logging.INFO)
 
-def get_train_steps(dm):
+
+def get_train_steps(dm, args):
     total_devices = args.num_gpus * args.num_nodes
     if total_devices == 0:
         logging.warning("No GPUs found, using 1 device")
         total_devices = 1
-        
+
     logging.info(f"Total devices: {total_devices}")
     train_batches = len(dm.train_dataloader()) // total_devices
     if args.accumulate_grad_batches is None:
         return args.max_epochs * train_batches
     else:
         return args.max_epochs * train_batches // args.accumulate_grad_batches
-
-
-rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
-resource.setrlimit(resource.RLIMIT_NOFILE, (4096, rlimit[1]))
-# init: important to make sure every node initializes the same weights
-SEED = 18
-np.random.seed(SEED)
-random.seed(SEED)
-pytorch_lightning.seed_everything(SEED)
 
 
 def get_parse_args():
@@ -56,7 +46,7 @@ def get_parse_args():
     parser.add_argument("--lr", default=2e-5, type=float, help="Initial learning rate.")
     parser.add_argument("--max_epochs", default=5, type=int, help="Max epochs")
     parser.add_argument("--accelerator", default="ddp", type=str, help="Accelerator")
-    
+
     # For SE_XLNet
     parser.add_argument("--min_lr", default=0, type=float, help="Minimum learning rate.")
     parser.add_argument("--h_dim", type=int, help="Size of the hidden dimension.", default=768)
@@ -65,67 +55,80 @@ def get_parse_args():
     parser.add_argument("--num_classes", type=float, help="Number of classes.", default=2)
     parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay rate.")
     parser.add_argument("--warmup_prop", default=0.01, type=float, help="Warmup proportion.")
-    
+
     return parser
 
-# TODO: we need to upgrade the pytorch lightning version to 2.xxx
 
-args = get_parse_args().parse_args()
-args.num_gpus = torch.cuda.device_count() # Get the number of GPUs from the command line 
-args.num_nodes = 1 # Number of nodes to run the model
-args.accumulate_grad_batches = 1 # Accumulates gradients over k batches before stepping the optimizer.
+def main():
+    rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (4096, rlimit[1]))
 
-logging.info(f"Args: {args}")
+    # init: important to make sure every node initializes the same weights
+    SEED = 18
+    np.random.seed(SEED)
+    random.seed(SEED)
+    pytorch_lightning.seed_everything(SEED)
+
+    args = get_parse_args().parse_args()
+    args.num_gpus = torch.cuda.device_count()
+    args.num_nodes = 1
+    args.accumulate_grad_batches = 1
+
+    logging.info(f"Args: {args}")
+
+    # Step 1: Init Data
+    logging.info(
+        "--------------------------------Loading the data module--------------------------------"
+    )
+    dm = ClassificationData(
+        basedir=args.dataset_basedir,
+        tokenizer_name=args.model_name,
+        batch_size=args.batch_size,
+        num_workers=8,
+    )
+
+    # Step 2: Init Model
+    logging.info(
+        "--------------------------------Initializing the model--------------------------------"
+    )
+    model = SEXLNet(hparams=args)
+    model.hparams.warmup_steps = int(
+        get_train_steps(dm, args) * model.hparams.warmup_prop
+    )
+
+    # Init Learning Rate Monitor
+    lr_monitor = LearningRateMonitor(logging_interval="step")
+
+    # Step 3: Start training
+    logging.info(
+        "--------------------------------Starting the training--------------------------------"
+    )
+    checkpoint_callback = ModelCheckpoint(
+        filename="{epoch}-{step}-{val_acc_epoch:.4f}",
+        save_top_k=3,
+        verbose=True,
+        monitor="val_acc_epoch",
+        mode="max",
+    )
+
+    trainer = pytorch_lightning.Trainer(
+        callbacks=[checkpoint_callback, lr_monitor],
+        val_check_interval=0.5,
+        gradient_clip_val=args.clip_grad,
+        max_epochs=args.max_epochs,
+        accelerator="auto",
+        devices="auto",
+        strategy="auto",
+    )
+
+    logging.info(
+        "--------------------------------Fitting the model--------------------------------"
+    )
+    trainer.fit(model, dm)
+    logging.info(
+        "--------------------------------Training completed--------------------------------"
+    )
 
 
-
-# Step 1: Init Data
-logging.info("--------------------------------Loading the data module--------------------------------")
-dm = ClassificationData(
-    basedir=args.dataset_basedir,
-    tokenizer_name=args.model_name,
-    batch_size=args.batch_size,
-)
-
-# Step 2: Init Model
-logging.info("--------------------------------Initializing the model--------------------------------")
-# pl.LightningModule.log
-
-model = SEXLNet(hparams=args) # fix this model input
-model.hparams.warmup_steps = int(get_train_steps(dm) * model.hparams.warmup_prop)
-
-# Init Learning Rate Monitor
-lr_monitor = LearningRateMonitor(logging_interval="step")
-
-# Step 3: Start
-logging.info("--------------------------------Starting the training--------------------------------")
-checkpoint_callback = ModelCheckpoint(
-    filename="{epoch}-{step}-{val_acc_epoch:.4f}",
-    save_top_k=3,
-    verbose=True,
-    monitor="val_acc_epoch",
-    mode="max",
-)
-
-# trainer = pl.Trainer.from_argparse_args(
-#     args,
-#     callbacks=[checkpoint_callback, lr_monitor],
-#     val_check_interval=0.5,
-#     gradient_clip_val=args.clip_grad,
-#     track_grad_norm=2,
-# )
-
-trainer: pytorch_lightning.Trainer = pytorch_lightning.Trainer(
-    callbacks=[checkpoint_callback, lr_monitor],
-    val_check_interval=0.5,
-    gradient_clip_val=args.clip_grad,
-    max_epochs=args.max_epochs,
-    # track_grad_norm=2, https://lightning.ai/docs/pytorch/stable/upgrade/from_1_6.html
-    
-)
-
-logging.info("--------------------------------Fitting the model--------------------------------")
-trainer.fit(model, dm)
-logging.info("--------------------------------Training completed--------------------------------")
-
-# trainer.test()
+if __name__ == "__main__":
+    main()
