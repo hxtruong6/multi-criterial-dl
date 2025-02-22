@@ -1,5 +1,7 @@
-export DATA_FOLDER='data/XLNet-SUBJ'
-export TOKENIZER_NAME='xlnet-base-cased'
+# export DATA_FOLDER='data/XLNet-SUBJ'
+# export TOKENIZER_NAME='xlnet-base-cased'
+export DATA_FOLDER='data/RoBERTa-SST-5'
+export TOKENIZER_NAME='roberta-base'
 export MAX_LENGTH=5
 
 # Creates jsonl files for train and dev
@@ -10,6 +12,8 @@ python preprocessing/store_parse_trees.py \
 
 # Create concept store for SST-2 dataset
 # Since SST-2 already provides parsed output, easier to do it this way, for other datasets, need to adapt
+echo "--------------------------------"
+echo "Creating concept store for $DATA_FOLDER"
 
 python preprocessing/build_concept_store.py \
       -i $DATA_FOLDER/train_with_parse.json \

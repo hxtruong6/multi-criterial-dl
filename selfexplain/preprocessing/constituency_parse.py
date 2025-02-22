@@ -9,13 +9,30 @@ from nltk.tree import ParentedTree
 
 class ParseTree:
     def __init__(self, tokenizer_name, cached_parses=None):
+        # Suppress warnings for benepar
+        import warnings
+
+        warnings.filterwarnings("ignore", category=UserWarning)
+        warnings.filterwarnings("ignore", category=FutureWarning)
+
         self.parser = benepar.Parser("benepar_en3")
-        if "roberta" in tokenizer_name:
-            self.tokenizer = RobertaTokenizer.from_pretrained(tokenizer_name)
-        if "xlnet" in tokenizer_name:
-            self.tokenizer = XLNetTokenizer.from_pretrained(tokenizer_name)
-        if "distilbert" in tokenizer_name:
-            self.tokenizer = DistilBertTokenizer.from_pretrained(tokenizer_name)
+
+        # More specific tokenizer initialization
+        tokenizer_map = {
+            "roberta": RobertaTokenizer,
+            "xlnet": XLNetTokenizer,
+            "distilbert": DistilBertTokenizer,
+        }
+
+        for prefix, tokenizer_class in tokenizer_map.items():
+            if prefix in tokenizer_name:
+                self.tokenizer = tokenizer_class.from_pretrained(
+                    tokenizer_name, legacy=False  # Use new behavior
+                )
+                break
+        else:
+            raise ValueError(f"Unsupported tokenizer: {tokenizer_name}")
+
         self.cached_parses = cached_parses
         self.TREE_HEIGHT = 0
         self.NGRAM_LIMIT = 1000

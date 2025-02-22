@@ -15,7 +15,8 @@ def concept_store(
     model_name, input_file_name, output_folder, max_concept_length, batch_size=5
 ):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModel.from_pretrained(model_name).to("cuda")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = AutoModel.from_pretrained(model_name).to(device)
     model.eval()
     config = config_dict[model_name]
     sequence_summary = SequenceSummary(config)
@@ -31,14 +32,22 @@ def concept_store(
                 concept_idx[idx] = sentence
                 idx += 1
 
+    if not concept_idx:
+        raise ValueError(
+            f"No concepts found with length <= {max_concept_length} words. "
+            "Please check your input file or increase max_concept_length."
+        )
+
     concept_tensor = []
     for batch in chunks(list(concept_idx.values()), n=batch_size):
         inputs = tokenizer(batch, padding=True, return_tensors="pt")
         for key, value in inputs.items():
-            inputs[key] = value.to("cuda")
-        outputs = model(**inputs)
-        pooled_rep = sequence_summary(outputs[0])
-        concept_tensor.append(pooled_rep.detach().cpu())
+            inputs[key] = value.to(device)
+        with torch.no_grad():
+            outputs = model(**inputs)
+            pooled_rep = sequence_summary(outputs[0])
+            print("pooled_rep", pooled_rep)
+            concept_tensor.append(pooled_rep.detach().cpu())
 
     concept_tensor = torch.cat(concept_tensor, dim=0)
 
@@ -101,3 +110,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # concept_store(
+    #     input_file_name="/Users/xuantruong/Documents/WORK/RESEARCH/multi-criteria-dl/selfexplain/data/XLNet-SUBJ/train_with_parse.json",
+    #     output_folder="/Users/xuantruong/Documents/WORK/RESEARCH/multi-criteria-dl/selfexplain/data/XLNet-SUBJ",
+    #     model_name="xlnet-base-cased",
+    #     max_concept_length=5,
+    # )
